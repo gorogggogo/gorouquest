@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ごろうくえすと</title>
+    <style>
+        #game {
+            text-align: center;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game">
+        <h1>ごろうくえすと</h1>
+        <div id="hero-status">
+            <p>名前: ごろう</p>
+            <p>HP: <span id="hero-hp">50</span></p>
+            <p>攻撃力: <span id="hero-attack">50</span></p>
+            <p>レベル: <span id="hero-level">1</span></p>
+            <p>アイテム: <span id="hero-items">なし</span></p>
+        </div>
+        <div id="monster-status">
+            <p>敵: <span id="monster-name">スライム</span></p>
+            <p>HP: <span id="monster-hp">3</span></p>
+        </div>
+        <button onclick="attack()">戦う</button>
+        <button onclick="heal()">回復</button>
+        <button onclick="spawnMonster()">次のモンスター</button>
+        <button onclick="challengeBoss()">ボスに挑戦！</button>
+    </div>
+    <audio id="victory-sound" src="victory.mp3"></audio>
+    <script>
+        const hero = {
+            name: 'ごろう',
+            hp: 50,
+            maxHp: 50,
+            attack: 50,
+            level: 1,
+            items: []
+        };
+
+        const monsters = [
+            { name: 'スライム', hp: 3, attack: 3 },
+            { name: 'スライムベス', hp: 8, attack: 8 },
+            { name: 'ドラキー', hp: 13, attack: 13 },
+            { name: 'ももんじゃ', hp: 18, attack: 18 },
+            { name: 'セブンイレブン', hp: 23, attack: 23 },
+            { name: 'ローソン', hp: 28, attack: 28 },
+            { name: 'ファミリーマート', hp: 33, attack: 33 },
+            { name: 'ドン・キホーテ', hp: 38, attack: 38 },
+            { name: 'りゅうおう', hp: 999, attack: 500 },
+            { name: 'エスターク', hp: 1999, attack: 1999, evadeChance: 0.5 },
+            { name: 'ミルドラース', hp: 9999999, attack: 0, special: 'instantDeathAfter10' },
+            { name: 'デスタムーア', hp: 999999999999999, attack: 0, special: 'instantDeathAfter2' },
+            { name: 'デスピサロ', hp: 100000000000088888999, attack: 99999999999999999 }
+        ];
+
+        let currentMonsterIndex = 0;
+        let currentMonster = { ...monsters[currentMonsterIndex] };
+        let monstersDefeated = 0;
+        let attackCount = 0;
+
+        function updateStatus() {
+            document.getElementById('hero-hp').textContent = hero.hp;
+            document.getElementById('hero-attack').textContent = hero.attack;
+            document.getElementById('hero-level').textContent = hero.level;
+            document.getElementById('hero-items').textContent = hero.items.length ? hero.items.join(', ') : 'なし';
+
+            if (currentMonster) {
+                document.getElementById('monster-name').textContent = currentMonster.name;
+                document.getElementById('monster-hp').textContent = currentMonster.hp;
+            } else {
+                document.getElementById('monster-name').textContent = '';
+                document.getElementById('monster-hp').textContent = '';
+            }
+        }
+
+        function attack() {
+            if (!currentMonster) {
+                alert("敵がいません！");
+                return;
+            }
+
+            if (currentMonster.name === 'エスターク' && Math.random() < currentMonster.evadeChance) {
+                alert(`${currentMonster.name}は攻撃をかわした！`);
+            } else {
+                let damage = hero.items.includes('一撃の剣') ? currentMonster.hp : hero.attack;
+                currentMonster.hp -= damage;
+            }
+
+            if (currentMonster.hp <= 0) {
+                alert(`${currentMonster.name}を倒した！`);
+                monstersDefeated++;
+                hero.level++;
+                hero.attack += 100;
+                hero.maxHp += 100;
+                hero.hp = hero.maxHp;
+                dropItems();
+                handleSpecialEffects();
+                currentMonster = null;
+                if (currentMonsterIndex < monsters.length - 1) {
+                    spawnMonster();
+                }
+            } else if (!hero.items.includes('無敵の盾')) {
+                hero.hp -= currentMonster.attack;
+                if (hero.hp <= 0) {
+                    alert("ごろうは倒された...");
+                    resetGame();
+                }
+            }
+
+            updateStatus();
+        }
+
+        function heal() {
+            hero.hp = Math.min(hero.maxHp, Math.ceil(hero.maxHp / 2));
+            updateStatus();
+        }
+
+        function spawnMonster() {
+            if (!currentMonster) {
+                currentMonsterIndex = (currentMonsterIndex + 1) % 8; // Loop through regular monsters
+                currentMonster = { ...monsters[currentMonsterIndex] };
+                updateStatus();
+            }
+        }
+
+        function challengeBoss() {
+            if (hero.level % 10 === 0 && currentMonsterIndex < monsters.length - 1) {
+                currentMonsterIndex++;
+                currentMonster = { ...monsters[currentMonsterIndex] };
+                updateStatus();
+            } else {
+                alert("まだボスに挑戦できません！");
+            }
+        }
+
+        function dropItems() {
+            if (Math.random() < 1 / 5) {
+                hero.items.push('一撃の剣');
+                alert('一撃の剣を手に入れた！');
+            }
+
+            if (monstersDefeated % 8 === 0 && monstersDefeated > 0) {
+                hero.items.push('無敵の盾');
+                alert('無敵の盾を手に入れた！');
+            }
+
+            if (Math.random() < 1 / 100) {
+                alert('即死のリンゴを手に入れた！');
+                alert('ごろうは即死のリンゴを食べてしまった...');
+                resetGame();
+            }
+        }
+
+        function handleSpecialEffects() {
+            if (currentMonster.name === 'デスタムーア') {
+                hero.items = [];
+                alert('デスタムーアに倒され、ごろうのアイテムが奪われた！');
+            }
+            if (currentMonster.name === 'デスピサロ') {
+                document.getElementById('victory-sound').play();
+                alert('デスピサロを倒した！ゲームクリア！');
+                resetGame();
+            }
+        }
+
+        function resetGame() {
+            hero.hp = 50;
+            hero.maxHp = 50;
+            hero.attack = 50;
+            hero.level = 1;
+            hero.items = [];
+            monstersDefeated = 0;
+            currentMonsterIndex = 0;
+            currentMonster = { ...monsters[0] };
+            updateStatus();
+        }
+
+        updateStatus();
+    </script>
+</body>
+</html>
